@@ -1,0 +1,9 @@
+Flask
+flask-cors
+psycopg2-binary
+minio
+pyjwt
+stripe
+python-dotenv
+werkzeug
+gunicorn
