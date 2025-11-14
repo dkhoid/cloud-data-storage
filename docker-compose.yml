@@ -52,8 +52,8 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
       MINIO_BUCKET: user-files
-      JWT_SECRET: ${JWT_SECRET}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      JWT_SECRET: your_jwt_secret_key
+      STRIPE_SECRET_KEY: your_stripe_secret_key
     ports:
       - "5000:5000"
     volumes:
