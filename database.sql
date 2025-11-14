@@ -1,9 +1,3 @@
--- Create Database
-CREATE DATABASE cloud_storage;
-
--- Connect to database
-\c cloud_storage;
-
 -- Users Table
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,

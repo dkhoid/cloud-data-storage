@@ -317,8 +317,25 @@ def get_files(current_user_id):
 
 
 @app.route('/api/download/<int:file_id>', methods=['GET'])
-@token_required
-def download_file(current_user_id, file_id):
+def download_file(file_id):
+    # Get token from Authorization header or query parameter
+    token = request.headers.get('Authorization')
+    if not token:
+        token = request.args.get('token')
+
+    if not token:
+        return jsonify({'error': 'Token is missing'}), 401
+
+    try:
+        if token.startswith('Bearer '):
+            token = token[7:]
+        data = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        current_user_id = data['user_id']
+    except jwt.ExpiredSignatureError:
+        return jsonify({'error': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'error': 'Invalid token'}), 401
+
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -623,5 +640,4 @@ if __name__ == '__main__':
     print("=" * 50)
     print("🚀 Cloud Storage Backend Starting...")
     print("=" * 50)
-    print("frontend: http://localhost:8080")
     app.run(debug=True, host='0.0.0.0', port=5000, threaded=True, use_reloader=False)
