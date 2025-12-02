@@ -1,3 +1,5 @@
+import time
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -37,7 +39,9 @@ def after_request(response):
 
 
 # Configuration
-JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')
+JWT_SECRET = os.getenv('JWT_SECRET')
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET environment variable must be set and non-empty for secure operation.")
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/cloud_storage')
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 stripe.api_key = STRIPE_SECRET_KEY
@@ -67,8 +71,21 @@ except S3Error as e:
 
 # Database connection
 def get_db_connection():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return conn
+    max_retries = 5
+    retry_delay = 2  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+            return conn
+        except psycopg2.OperationalError as e:
+            if attempt < max_retries - 1:
+                print(f"⚠️ Database not ready (Attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...")
+                time.sleep(retry_delay)
+            else:
+                print("❌ Could not connect to database after multiple attempts.")
+                raise e
+    return None
 
 
 # JWT Token decorator
