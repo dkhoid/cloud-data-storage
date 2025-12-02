@@ -1,4 +1,5 @@
 .env
+.env_aws
 .idea
 __pycache__/
 *.pyc
