@@ -15,7 +15,14 @@ from minio.error import S3Error
 import io
 import stripe
 from dotenv import load_dotenv
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
 load_dotenv()
 
 app = Flask(__name__)
@@ -132,17 +139,18 @@ def allowed_file(filename):
 
 # ==================== AUTH ENDPOINTS ====================
 @app.route('/api/login', methods=['POST'])
+@limiter.limit("5 per minute")
 def login():
     data = request.json
-    username = data.get('username')
-    password = data.get('password')
+    input_username = data.get('username')
+    input_password = data.get('password')
 
-    # Tài khoản cố định (có thể lưu trong biến môi trường)
+
     ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
     ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
+    ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'admin@heavencloud.qzz.io')
 
-    # Kiểm tra thông tin đăng nhập
-    if username != ADMIN_USERNAME or password != ADMIN_PASSWORD:
+    if input_username != ADMIN_USERNAME:
         return jsonify({'error': 'Invalid credentials'}), 401
 
     conn = get_db_connection()
@@ -151,24 +159,46 @@ def login():
     try:
         # Kiểm tra xem user đã tồn tại trong database chưa
         cur.execute('''
-                    SELECT id, username, email, plan, storage_limit, storage_used
+                    SELECT id, username, email, plan, storage_limit, storage_used, password_hash
                     FROM users
                     WHERE username = %s
-                    ''', (username,))
+                    ''', (ADMIN_USERNAME,))
 
         user = cur.fetchone()
 
-        # Nếu user chưa tồn tại, tạo mới
         if not user:
-            email = f"{username}@example.com"
+            # Tạo user admin với mật khẩu từ .env
             cur.execute('''
                         INSERT INTO users (username, email, password_hash, plan, storage_limit, storage_used)
-                        VALUES (%s, %s, %s, %s, %s, %s) 
-                        RETURNING id, username, email, plan, storage_limit, storage_used
-                        ''', (username, email, hash_password(password), 'free', 1073741824, 0))
+                        VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, username, email, plan, storage_limit, storage_used
+                        ''', (ADMIN_USERNAME, ADMIN_EMAIL, hash_password(ADMIN_PASSWORD), 'free', 1073741824, 0))
             user = cur.fetchone()
             conn.commit()
+            print(f"✅ Created admin user: {ADMIN_USERNAME}")
 
+            # Sau khi tạo, kiểm tra mật khẩu người dùng nhập
+            if input_password != ADMIN_PASSWORD:
+                return jsonify({'error': 'Invalid credentials'}), 401
+
+        else:
+            # User đã tồn tại: KIỂM TRA MẬT KHẨU NGƯỜI DÙNG NHẬP
+            # So sánh hash của mật khẩu nhập với hash trong DB
+            if user['password_hash'] != hash_password(input_password):
+                return jsonify({'error': 'Invalid credentials'}), 401
+
+            # Nếu mật khẩu trong .env đã thay đổi, cập nhật DB
+            # (Nhưng vẫn cho đăng nhập nếu mật khẩu cũ đúng)
+            if user['password_hash'] != hash_password(ADMIN_PASSWORD):
+                cur.execute('''
+                            UPDATE users
+                            SET password_hash = %s,
+                                email         = %s
+                            WHERE username = %s
+                            ''', (hash_password(ADMIN_PASSWORD), ADMIN_EMAIL, ADMIN_USERNAME))
+                conn.commit()
+                print(f"🔄 Updated admin password in DB for: {ADMIN_USERNAME}")
+
+        # Tạo token
         token = generate_token(user['id'])
 
         return jsonify({

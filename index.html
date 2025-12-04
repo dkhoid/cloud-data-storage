@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Storage Pro</title>
+    <title>Heaven Cloud</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -182,7 +182,10 @@
             border-color: #667eea;
             background: #edf2f7;
         }
-
+        .file-upload-zone.dragover {
+            border-color: #667eea;
+            background: #e6f2ff;
+        }
 
         .files-grid {
             display: grid;
@@ -244,7 +247,11 @@
             text-align: center;
             transition: 0.3s;
         }
-
+        .pricing-card.featured {
+            border-color: #667eea;
+            transform: scale(1.05);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
         .pricing-card:hover {
             transform: scale(1.05);
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
@@ -304,7 +311,19 @@
             font-size: 12px;
             font-weight: 600;
         }
+        .status-completed { background: #c6f6d5; color: #22543d; }
+        .status-pending { background: #feebc8; color: #744210; }
 
+        .message {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        .message.show { display: block; }
+        .message.success { background: #c6f6d5; color: #22543d; }
+        .message.error { background: #fed7d7; color: #742a2a; }
 
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-10px); }
@@ -342,7 +361,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>☁️ Cloud Storage Pro</h1>
+            <h1>☁️ Heaven Cloud</h1>
             <div class="user-badge" id="user-badge" style="display:none;">
                 <span id="username-display"></span>
                 <span class="plan-badge" id="plan-badge">FREE</span>
@@ -353,7 +372,7 @@
         <div class="content">
             <!-- Thay thế phần auth-section -->
             <div id="auth-section" class="section active">
-                <h2 style="text-align:center; margin-bottom:30px;">Cloud Storage Pro - Admin Login</h2>
+                <h2 style="text-align:center; margin-bottom:30px;">Heaven Cloud - Login</h2>
 
                 <div style="max-width: 400px; margin: 0 auto;">
                     <div class="message" id="auth-message"></div>
@@ -368,14 +387,6 @@
                             <label for="login-password"></label><input type="password" id="login-password" placeholder="Enter admin password">
                         </div>
                         <button class="btn btn-primary" style="width:100%;" onclick="login()">Login</button>
-
-                        <div style="margin-top: 20px; padding: 15px; background: #f7fafc; border-radius: 10px; text-align: center;">
-                            <p style="color: #718096; font-size: 14px;">
-                                <strong>Default Credentials:</strong><br>
-                                Username: <code>admin</code><br>
-                                Password: <code>admin123</code>
-                            </p>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -754,33 +765,54 @@
         }
 
         async function upgradePlan(planName) {
-            if (!confirm(`Upgrade to ${planName.toUpperCase()} plan?`)) return;
+            if (typeof API_URL === 'undefined' || typeof authToken === 'undefined') {
+                console.error('Lỗi: API_URL hoặc authToken chưa được định nghĩa.');
+                showMessage('main-message', 'Lỗi cấu hình hệ thống.', 'error');
+                return;
+            }
+
+            if (!confirm(`Bạn có chắc chắn muốn nâng cấp lên gói ${planName.toUpperCase()} không?`)) {
+                return;
+            }
 
             try {
-                const res = await fetch(`${API_URL}/upgrade`, {
+                showMessage('main-message', `Đang xử lý nâng cấp...`, 'info');
+
+                const apiUrl = `${API_URL}/upgrade`;
+                const payload = {
+                    plan: planName,
+                    billing_cycle: 'monthly'
+                };
+
+                const res = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${authToken}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ plan: planName, billing_cycle: 'monthly' })
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await res.json();
 
                 if (res.ok) {
-                    showMessage('main-message', `Successfully upgraded to ${planName.toUpperCase()}!`, 'success');
-                    currentUser.plan = planName;
-                    document.getElementById('plan-badge').textContent = planName.toUpperCase();
-                    loadDashboard();
-                    loadPricing();
+                    showMessage('main-message', `Đã nâng cấp thành công lên gói ${planName.toUpperCase()}!`, 'success');
+                    if (typeof currentUser !== 'undefined') currentUser.plan = planName;
+                    const planBadge = document.getElementById('plan-badge');
+                    if (planBadge) planBadge.textContent = planName.toUpperCase();
+
+                    if (typeof loadDashboard === 'function') loadDashboard();
+                    if (typeof loadPricing === 'function') loadPricing();
+
                 } else {
-                    showMessage('main-message', data.error, 'error');
+                    const errorMessage = data.error || data.message || `Lỗi không xác định (${res.status}).`;
+                    showMessage('main-message', `Lỗi nâng cấp: ${errorMessage}`, 'error');
                 }
+
             } catch (err) {
-                showMessage('main-message', 'Upgrade failed', 'error');
+                console.error('Lỗi trong quá trình nâng cấp:', err);
+                showMessage('main-message', 'Kết nối thất bại. Vui lòng kiểm tra kết nối mạng và thử lại.', 'error');
             }
-        }
 
         // Drag & Drop
         const uploadZone = document.getElementById('upload-zone');
