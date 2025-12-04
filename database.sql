@@ -87,3 +87,8 @@ $$ language 'plpgsql';
 -- Trigger for users table
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create default admin account (password: admin123)
+INSERT INTO users (username, email, password_hash, plan, storage_limit)
+VALUES ('admin', 'admin@example.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'free', 1073741824)
+ON CONFLICT (username) DO NOTHING;

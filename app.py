@@ -131,68 +131,43 @@ def allowed_file(filename):
 
 
 # ==================== AUTH ENDPOINTS ====================
-
-@app.route('/api/register', methods=['POST'])
-def register():
-    data = request.json
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-
-    if not username or not password or not email:
-        return jsonify({'error': 'All fields are required'}), 400
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    try:
-        # Check if username or email exists
-        cur.execute('SELECT id FROM users WHERE username = %s OR email = %s', (username, email))
-        if cur.fetchone():
-            return jsonify({'error': 'Username or email already exists'}), 400
-
-        # Create user
-        cur.execute('''
-                    INSERT INTO users (username, email, password_hash)
-                    VALUES (%s, %s, %s) RETURNING id, username, email, plan, storage_limit, storage_used
-                    ''', (username, email, hash_password(password)))
-
-        user = cur.fetchone()
-        conn.commit()
-
-        return jsonify({
-            'message': 'Registration successful',
-            'user': dict(user)
-        }), 201
-
-    except Exception as e:
-        conn.rollback()
-        return jsonify({'error': str(e)}), 500
-    finally:
-        cur.close()
-        conn.close()
-
-
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
 
+    # Tài khoản cố định (có thể lưu trong biến môi trường)
+    ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin')
+    ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
+
+    # Kiểm tra thông tin đăng nhập
+    if username != ADMIN_USERNAME or password != ADMIN_PASSWORD:
+        return jsonify({'error': 'Invalid credentials'}), 401
+
     conn = get_db_connection()
     cur = conn.cursor()
 
     try:
+        # Kiểm tra xem user đã tồn tại trong database chưa
         cur.execute('''
-                    SELECT id, username, email, plan, storage_limit, storage_used, password_hash
+                    SELECT id, username, email, plan, storage_limit, storage_used
                     FROM users
                     WHERE username = %s
                     ''', (username,))
 
         user = cur.fetchone()
 
-        if not user or user['password_hash'] != hash_password(password):
-            return jsonify({'error': 'Invalid credentials'}), 401
+        # Nếu user chưa tồn tại, tạo mới
+        if not user:
+            email = f"{username}@example.com"
+            cur.execute('''
+                        INSERT INTO users (username, email, password_hash, plan, storage_limit, storage_used)
+                        VALUES (%s, %s, %s, %s, %s, %s) 
+                        RETURNING id, username, email, plan, storage_limit, storage_used
+                        ''', (username, email, hash_password(password), 'free', 1073741824, 0))
+            user = cur.fetchone()
+            conn.commit()
 
         token = generate_token(user['id'])
 
@@ -209,6 +184,9 @@ def login():
             }
         }), 200
 
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
     finally:
         cur.close()
         conn.close()
