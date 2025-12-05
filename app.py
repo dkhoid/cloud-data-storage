@@ -60,9 +60,9 @@ minio_client = Minio(
 try:
     if not minio_client.bucket_exists(MINIO_BUCKET):
         minio_client.make_bucket(MINIO_BUCKET)
-        print(f"✅ Created bucket: {MINIO_BUCKET}")
+        print(f"Created bucket: {MINIO_BUCKET}")
 except S3Error as e:
-    print(f"❌ MinIO Error: {e}")
+    print(f"MinIO Error: {e}")
 
 
 # Database connection
@@ -638,6 +638,6 @@ def home():
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("🚀 Cloud Storage Backend Starting...")
+    print("Cloud Storage Backend Starting...")
     print("=" * 50)
     app.run(debug=True, host='0.0.0.0', port=5000, threaded=True, use_reloader=False)
