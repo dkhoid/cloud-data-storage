@@ -39,15 +39,14 @@ def after_request(response):
 # Configuration
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key')
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/cloud_storage')
-STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
-stripe.api_key = STRIPE_SECRET_KEY
+
 
 # MinIO Configuration
 MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'localhost:9000')
 MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', 'minioadmin')
 MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', 'minioadmin')
 MINIO_BUCKET = os.getenv('MINIO_BUCKET', 'user-files')
-MINIO_SECURE = os.getenv('MINIO_SECURE', 'False').lower() == 'true'  # 🔥 Thêm dòng này
+MINIO_SECURE = os.getenv('MINIO_SECURE', 'False').lower() == 'true'
 
 # Initialize MinIO client
 minio_client = Minio(
@@ -284,7 +283,7 @@ def upload_file(current_user_id):
         return jsonify({'error': f'MinIO error: {str(e)}'}), 500
     except Exception as e:
         conn.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'upload failed error: {str(e)}'}), 500
     finally:
         cur.close()
         conn.close()
@@ -631,7 +630,7 @@ def get_admin_stats():
 @app.route('/')
 def home():
     return jsonify({
-        'message': 'Cloud Storage API v2.0',
+        'message': 'Cloud Storage',
         'features': [
             'JWT Authentication',
             'MinIO Object Storage',

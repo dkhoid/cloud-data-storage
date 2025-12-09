@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: cloud_storage
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+      POSTGRES_PASSWORD: password
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database.sql:/docker-entrypoint-initdb.d/init.sql
@@ -23,15 +23,15 @@ services:
       - postgres
     environment:
       # Database
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-password}@postgres:5432/cloud_storage
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cloud_storage
 
-      # 🔥 MinIO Configuration cho AWS S3
+      # MinIO Configuration cho AWS S3
       MINIO_ENDPOINT: s3.${AWS_REGION:-ap-southeast-1}.amazonaws.com
-      MINIO_ACCESS_KEY: ${AWS_ACCESS_KEY_ID}
-      MINIO_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY}
-      MINIO_BUCKET: ${S3_BUCKET_NAME}
-      MINIO_SECURE: 'True'  # 🔥 Quan trọng: S3 luôn dùng HTTPS
-      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_SECURE: 'True'
+      AWS_REGION: ap-southeast-1
 
       # App Config
       JWT_SECRET: ${JWT_SECRET}
@@ -55,3 +55,8 @@ services:
 
 volumes:
   postgres_data:
+
+
+
+# nguoi dung truy cap vao localhost:80 se duoc chuyen den nginx, sau do nginx se chuyen den backend o cong 5000 nho reverse proxy.
+# backend se ket noi den postgres(volume) va aws s3 de luu tru du lieu
