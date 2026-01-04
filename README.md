@@ -2,7 +2,7 @@
 
 A full-stack cloud storage application with file upload/download, user authentication, subscription management, and analytics.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Docker Desktop installed and running
